@@ -196,6 +196,14 @@ class Manager():
             writer = csv.writer(file)
             writer.writerow([owner.registerNumber, owner.name, owner.points, owner.isLicenseActive, data_formatada, hora_formatada, decision,finalPath])
 
+    def run(image):
+        for placa in computerVision.inference(image):
+            owner, decision = manager.inference(placa)
+            if decision != "Veículo regular":
+                manager.logger(image, owner, decision)
+            else:
+                pass
+
 class ComputerVision:
     def __init__(self, model, reader):
         self.model = model
@@ -254,15 +262,10 @@ class ComputerVision:
             if len(results) >1 and len(results[1])>6 and results[2]> 0.2:
                 ocr = result[1]
         return ocr
-    
+
+
 csvDB = CsvDB("assets/csv/cars.csv", "assets/csv/owners.csv")
-manager = Manager(csvDB)
 computerVision = ComputerVision(YOLO("plates.pt"), easyocr.Reader(['en']))
-image = cv2.imread("assets/images/teste.webp")
-for placa in computerVision.inference(image):
-    owner, decision = manager.inference(placa)
-    if decision != "Veículo regular":
-        manager.logger(image, owner, decision)
-    else:
-        pass
+manager = Manager(csvDB).run(cv2.imread("assets/images/teste.webp"))
+
 
