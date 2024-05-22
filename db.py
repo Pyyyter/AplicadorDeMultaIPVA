@@ -1,5 +1,10 @@
 import csv
-
+from datetime import datetime
+import cv2
+import easyocr
+import numpy as np
+import matplotlib.pyplot as plt
+from ultralytics import YOLO
 class Vehicle:
     def __init__(self, plateCode, isIPVAPaid,isCRLVPaid, ownerRegisterNumber):
         self.plate = plateCode
@@ -101,8 +106,8 @@ class CsvDB(GenericDB):
     # Update to the new implementation
     def updateVehicle(self, vehicle):
         # with open(self.ownersFile, 'r') as f:
-        #     reader = csv.reader(f)
-        #     data = list(reader)
+        #     self.reader = csv.self.reader(f)
+        #     data = list(self.reader)
         #     indice_linha = self.encontrar_indice_linha(vehicle.plate, data)
         # if indice_linha != -1:
         #     data[indice_linha] = [vehicle.plate, vehicle.isIPVAPaid, vehicle.isCRLVPaid, vehicle.ownerRegisterNumber]
@@ -165,20 +170,101 @@ class Manager():
     def inference(self, plate):
         vehicle = self.db.returnCar(plate)
         owner = self.db.returnOwner(vehicle)
-        owner.printOwner()
+        wasTicketApplied = False
+        decision = "Veículo regular"
         if self.isLicenseRevoked(owner):
-            self.applyTicket(owner, "Dirigir com carteira cassada", 880,41, 7)
+            self.applyTicket(owner, "Dirigir com carteira cassada", 880.41, 7)
+            wasTicketApplied = True
+            decision = "Licença cassada"
 
         if not vehicle.isIPVAPaid or not vehicle.isCRLVPaid:
             self.applyTicket(owner, "Dirigir com documento irregular, apreensão do veículo permitida", 293.47, 7)
-            
+            wasTicketApplied = True
+            decision = "Documento irregular"
+
         if not owner.isLicenseActive:
             self.applyTicket(owner, "Licença vencida", 293.47, 7)
-        
-        owner.printOwner()
-        print(vehicle.plate, vehicle.isIPVAPaid, vehicle.isCRLVPaid, vehicle.ownerRegisterNumber)
+            wasTicketApplied = True
+            decision = "Licença vencida"
+        return owner, wasTicketApplied, decision
 
-csvDB = CsvDB("cars.csv", "owners.csv")
+    def logger(self, image, owner, decision, logPath = "assets/logs/",imagesPath = "assets/images/"):
+        data_hora_atual = datetime.now()
+        data_formatada = data_hora_atual.strftime("%d-%m-%Y")
+        hora_formatada = data_hora_atual.strftime("%H:%M:%S")
+        finalPath = f"{imagesPath}{owner.registerNumber}{data_formatada}{hora_formatada}.jpg"
+        cv2.imwrite(finalPath, image)
+        with open(f"{logPath}log.csv", "a") as file:
+            writer = csv.writer(file)
+            writer.writerow([owner.registerNumber, owner.name, owner.points, owner.isLicenseActive, data_formatada, hora_formatada, decision,finalPath])
+
+class ComputerVision:
+    def __init__(self, model, reader):
+        self.model = model
+        self.reader = reader
+
+    def inference(self, image):
+        results = self.model.predict(image, image.shape[0] if image.shape[0] >= image.shape[1] else image.shape[1])
+        placas = []
+        for r in results:
+            if r:
+                for box in r.boxes:
+                    x, y, w, h = box.xywh[0].tolist()
+                    placas.append(self.getOCR(image, x, y, w, h))
+        return placas
+
+    def fixOCR(self, ocr):
+        for i in range(len(ocr)):
+            if i == 0 or i == 1 or i == 2 or i == 4:
+                if ocr[i] == "0":
+                    ocr = ocr[:i] + "O" + ocr[i+1:]
+                if ocr[i] == "1":
+                    ocr = ocr[:i] + "I" + ocr[i+1:]
+                if ocr[i] == "5":
+                    ocr = ocr[:i] + "S" + ocr[i+1:]
+            if i == 3 or i == 5 or i == 6:
+                if ocr[i] == "O":
+                    ocr = ocr[:i] + "0" + ocr[i+1:]
+                if ocr[i] == "I":
+                    ocr = ocr[:i] + "1" + ocr[i+1:]
+                if ocr[i] == "S":
+                    ocr = ocr[:i] + "5" + ocr[i+1:]
+        return ocr
+
+    def getOCR(self, image, x, y, w, h):
+        real_x = x - w/2
+        real_y = y - h/2
+        cropped = image[int(real_y):int(real_y+h), int(real_x):int(real_x+w)]
+        gray = cv2.cvtColor(cropped, cv2.COLOR_RGB2GRAY)
+        results = self.reader.readtext(gray)
+        ocr = ""
+        for result in results:
+            if len(results) == 1:
+                ocr = result[1]
+            if len(results) >1 and len(results[1])>6 and results[2]> 0.2:
+                ocr = result[1]
+        ocr = self.fixOCR(ocr)
+        return ocr
+
+    def getOCROnFullImage(self, image):
+        gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+        results = self.reader.readtext(gray)
+        ocr = ""
+        for result in results:
+            if len(results) == 1:
+                ocr = result[1]
+            if len(results) >1 and len(results[1])>6 and results[2]> 0.2:
+                ocr = result[1]
+        return ocr
+    
+csvDB = CsvDB("assets/csv/cars.csv", "assets/csv/owners.csv")
 manager = Manager(csvDB)
-manager.inference("LNN2302")
+computerVision = ComputerVision(YOLO("plates.pt"), easyocr.Reader(['en']))
+image = cv2.imread("assets/images/teste.webp")
+for placa in computerVision.inference(image):
+    owner, wasTicketApplied, decision = manager.inference(placa)
+    if wasTicketApplied:
+        manager.logger(image, owner, decision)
+    else:
+        pass
 
