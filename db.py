@@ -174,25 +174,23 @@ class Manager():
         decision = "Veículo regular"
         if self.isLicenseRevoked(owner):
             self.applyTicket(owner, "Dirigir com carteira cassada", 880.41, 7)
-            wasTicketApplied = True
             decision = "Licença cassada"
 
         if not vehicle.isIPVAPaid or not vehicle.isCRLVPaid:
             self.applyTicket(owner, "Dirigir com documento irregular, apreensão do veículo permitida", 293.47, 7)
-            wasTicketApplied = True
             decision = "Documento irregular"
 
         if not owner.isLicenseActive:
             self.applyTicket(owner, "Licença vencida", 293.47, 7)
-            wasTicketApplied = True
             decision = "Licença vencida"
-        return owner, wasTicketApplied, decision
+        return owner, decision
 
-    def logger(self, image, owner, decision, logPath = "assets/logs/",imagesPath = "assets/images/"):
+    def logger(self, image, owner, decision, logPath = "assets/logs/",imagesPath = "assets/logs/images/"):
         data_hora_atual = datetime.now()
         data_formatada = data_hora_atual.strftime("%d-%m-%Y")
-        hora_formatada = data_hora_atual.strftime("%H:%M:%S")
-        finalPath = f"{imagesPath}{owner.registerNumber}{data_formatada}{hora_formatada}.jpg"
+        hora_formatada = data_hora_atual.strftime("%H-%M-%S")
+        finalPath = f"{imagesPath}{owner.registerNumber}+{data_formatada}+{hora_formatada}.jpg"
+        print(finalPath)
         cv2.imwrite(finalPath, image)
         with open(f"{logPath}log.csv", "a") as file:
             writer = csv.writer(file)
@@ -262,8 +260,8 @@ manager = Manager(csvDB)
 computerVision = ComputerVision(YOLO("plates.pt"), easyocr.Reader(['en']))
 image = cv2.imread("assets/images/teste.webp")
 for placa in computerVision.inference(image):
-    owner, wasTicketApplied, decision = manager.inference(placa)
-    if wasTicketApplied:
+    owner, decision = manager.inference(placa)
+    if decision != "Veículo regular":
         manager.logger(image, owner, decision)
     else:
         pass
