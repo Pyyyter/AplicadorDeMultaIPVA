@@ -171,49 +171,40 @@ class Manager():
     def inference(self, plate):
         vehicle = self.db.returnCar(plate)
         owner = self.db.returnOwner(vehicle)
-        decision = "Veículo regular"
+        decision = "Veiculo regular"
         if self.isLicenseRevoked(owner):
             self.applyTicket(owner, "Dirigir com carteira cassada", 880.41, 7)
-            decision = "Licença cassada"
+            decision = "Licenca cassada"
 
         if not vehicle.isIPVAPaid or not vehicle.isCRLVPaid:
             self.applyTicket(owner, "Dirigir com documento irregular, apreensão do veículo permitida", 293.47, 7)
             decision = "Documento irregular"
 
         if not owner.isLicenseActive:
-            self.applyTicket(owner, "Licença vencida", 293.47, 7)
+            self.applyTicket(owner, "Licenca vencida", 293.47, 7)
             decision = "Licença vencida"
         return owner, decision
 
-    def logger(self, image, owner, decision, logPath = "assets/logs/",imagesPath = "assets/logs/images/"):
+    def logger(self, image, owner, decision, logPath="assets/logs/", imagesPath="assets/logs/images/"):
         data_hora_atual = datetime.now()
         data_formatada = data_hora_atual.strftime("%d-%m-%Y")
         hora_formatada = data_hora_atual.strftime("%H-%M-%S")
         finalPath = f"{imagesPath}{owner.registerNumber}+{data_formatada}+{hora_formatada}.jpg"
         print(finalPath)
         cv2.imwrite(finalPath, image)
-        with open(f"{logPath}log.csv", "a") as file:
-            writer = csv.writer(file)
-            writer.writerow([owner.registerNumber, owner.name, owner.points, owner.isLicenseActive, data_formatada, hora_formatada, decision,finalPath])
+        with open(f"{logPath}log.csv", "a", newline='') as file:  # Adicionando newline=''
+            writer = csv.writer(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            writer.writerow([owner.registerNumber, owner.name, owner.points, owner.isLicenseActive, data_formatada, hora_formatada, decision, finalPath])
 
     def run(self, image):
         for placa in self.computerVision.inference(image):
-            print("!")
-            print("!")
-            print("!")
-            print("!")
-            print("!")
-            print(placa)
-            print("!")
-            print("!")
-            print("!")
-            print("!")
-            print("!")
             owner, decision = self.inference(placa)
             if decision != "Veículo regular":
                 self.logger(image, owner, decision)
             else:
                 pass
+
+# def step1(image):
 
 class ComputerVision:
     def __init__(self, model, reader):

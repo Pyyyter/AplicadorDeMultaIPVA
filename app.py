@@ -72,7 +72,7 @@ def main():
 
     quant_videos = len(os.listdir("assets/videos"))
     arquivo_video = "assets/videos/Video1.mp4"
-    test_data = load_test_csv('assets\logs\log.csv')
+    test_data = load_test_csv('assets/logs/log.csv')
     #test_data = load_test_csv("teste.csv")
     quant_total_multas = tamanho_csv(test_data)
     tamanho_pagina = 12
