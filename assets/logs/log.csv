@@ -1,16 +1,5 @@
-Numero CNH,Nome,Pontos na Carteira,LicenÃ§a Ativa,Data/Hora,Imagem
-19283748591,joe,63,1,22/05/2024,16:25:09,Documento irregular,assets/images/assets/images/1928374859122/05/202416:25:09.jpg
-19283748591,joe,77,1,22/05/2024,16:26:40,Documento irregular,assets/images/assets/images/1928374859122/05/202416:26:40.jpg
-
-19283748591,joe,91,1,22-05-2024,16:29:30,Documento irregular,assets/images/1928374859122-05-202416:29:30.jpg
-
-19283748591,joe,105,1,22-05-2024,16:33:49,Documento irregular,assets/images/1928374859122-05-202416:33:49.jpg
-19283748591,joe,112,1,22-05-2024,16:34:47,Licença cassada,assets/images/1928374859122-05-202416:34:47.jpg
-19283748591,joe,119,1,22-05-2024,16:36:28,Licença cassada,assets/images/1928374859122-05-202416:36:28.jpg
-19283748591,joe,126,1,22-05-2024,16:37:06,Licença cassada,assets/images/1928374859122-05-202416:37:06.jpg
-19283748591,joe,133,1,22-05-2024,16:38:13,Licença cassada,assets/images/1928374859122-05-202416:38:13.jpg
-19283748591,joe,140,1,22-05-2024,16:39:01,Licença cassada,assets/images/1928374859122-05-202416:39:01.jpg
-19283748591,joe,147,1,-22-05-2024,16-40-48,Licença cassada,assets/images/19283748591-22-05-2024+16-40-48.jpg
-19283748591,joe,154,1,22-05-2024,16-42-00,Licença cassada,assets/images/19283748591+22-05-2024+16-42-00.jpg
-19283748591,joe,161,1,22-05-2024,16-43-19,Licença cassada,assets/logs/images19283748591+22-05-2024+16-43-19.jpg
-19283748591,joe,168,1,22-05-2024,16-44-05,Licença cassada,assets/logs/images/19283748591+22-05-2024+16-44-05.jpg
+Numero CNH,Nome,Pontos na Carteira,LicennÃ§a Ativa,Data,Hora,Decisao,imagem
+19283748591,joe,91,1,22-05-2024,16:29:30,Documento irregular,assets/images/teste.webp
+19283748591,joe,105,1,22-05-2024,16:33:49,Documento irregular,assets/images/teste1.jpg
+19283748591,joe,112,1,22-05-2024,16:34:47,LicenÃ§a cassada,assets/images/teste2.jpg
+19283748591,joe,119,1,22-05-2024,16:36:28,LicenÃ§a cassada,assets/images/teste3.jpg
