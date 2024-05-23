@@ -145,7 +145,8 @@ class Manager():
     def __init__(self, db, computerVision):
         self.db = db
         self.computerVision = computerVision
-    
+        self.lastPlate = ""
+
     def isLicenseRevoked(self, owner):
         if owner.points > 20 and owner.capital >= 2:
             return True
@@ -196,16 +197,16 @@ class Manager():
             writer = csv.writer(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
             writer.writerow([owner.registerNumber, owner.name, owner.points, owner.isLicenseActive, data_formatada, hora_formatada, decision, finalPath])
 
-    def run(self, image):
-        for placa in self.computerVision.inference(image):
-            owner, decision = self.inference(placa)
-            if decision != "Veículo regular":
+    def run(self, image, res):
+        plates = self.computerVision.onlyOCRInference(image, res)
+        for plate in plates:
+            owner, decision = self.inference(plate)
+            if decision != "Veículo regular" and plate != self.lastPlate:
                 self.logger(image, owner, decision)
+                self.lastPlate = plate
             else:
                 pass
-
-# def step1(image):
-
+    
 class ComputerVision:
     def __init__(self, model, reader):
         self.model = model
@@ -220,6 +221,15 @@ class ComputerVision:
                     x, y, w, h = box.xywh[0].tolist()
                     placas.append(self.getOCR(image, x, y, w, h))
         return placas
+    def onlyOCRInference(self, image,results):
+        placas = []
+        for r in results:
+            if r:
+                for box in r.boxes:
+                    x, y, w, h = box.xywh[0].tolist()
+                    placas.append(self.getOCR(image, x, y, w, h))
+        return placas
+
 
     def fixOCR(self, ocr):
         for i in range(len(ocr)):
@@ -230,27 +240,46 @@ class ComputerVision:
                     ocr = ocr[:i] + "I" + ocr[i+1:]
                 if ocr[i] == "5":
                     ocr = ocr[:i] + "S" + ocr[i+1:]
+                if ocr[i] == "4":
+                    ocr = ocr[:i] + "L" + ocr[i+1:]
+                if ocr[i] == "8":
+                    ocr = ocr[:i] + "B" + ocr[i+1:]
+                if ocr[i] == "7":
+                    ocr = ocr[:i] + "Z" + ocr[i+1:]
+                if ocr[i] == "2":
+                    ocr = ocr[:i] + "Z" + ocr[i+1:]
             if i == 3 or i == 5 or i == 6:
-                if ocr[i] == "O":
+                if ocr[i] == "O" or ocr[i] == "o":
                     ocr = ocr[:i] + "0" + ocr[i+1:]
-                if ocr[i] == "I":
+                if ocr[i] == "I" or ocr[i] == "i":
                     ocr = ocr[:i] + "1" + ocr[i+1:]
-                if ocr[i] == "S":
+                if ocr[i] == "S" or ocr[i] == "s":
                     ocr = ocr[:i] + "5" + ocr[i+1:]
+                if ocr[i] == "B" or ocr[i] == "b":
+                    ocr = ocr[:i] + "8" + ocr[i+1:]
+                if ocr[i] == "L" or ocr[i] == "l":
+                    ocr = ocr[:i] + "4" + ocr[i+1:]
+                if ocr[i] == "Z" or ocr[i] == "z":
+                    ocr = ocr[:i] + "7" + ocr[i+1:]
+                if ocr[i] == "C" or ocr[i] == "c":
+                    ocr = ocr[:i] + "0" + ocr[i+1:]
+                if ocr[i] == "G" or ocr[i] == "g":
+                    ocr = ocr[:i] + "4" + ocr[i+1:]
+        print(ocr)
         return ocr
 
     def getOCR(self, image, x, y, w, h):
         real_x = x - w/2
         real_y = y - h/2
         cropped = image[int(real_y):int(real_y+h), int(real_x):int(real_x+w)]
+        cv2.imwrite("assets/croppedTESTE.jpg", cropped)
         gray = cv2.cvtColor(cropped, cv2.COLOR_RGB2GRAY)
         results = self.reader.readtext(gray)
         ocr = ""
-        for result in results:
-            if len(results) == 1:
-                ocr = result[1]
-            if len(results) >1 and len(results[1])>6 and results[2]> 0.2:
-                ocr = result[1]
+        for item in results:
+            if len(item[1]) == 7:
+                ocr = item[1]
+        ocr = ocr.upper()
         ocr = self.fixOCR(ocr)
         return ocr
 
@@ -265,6 +294,13 @@ class ComputerVision:
                 ocr = result[1]
         return ocr
 
-
+    def ocrInResults(self, image, results):
+        placas = []
+        for r in results:
+            if r:
+                for box in r.boxes:
+                    x, y, w, h = box.xywh[0].tolist()
+                    placas.append(self.getOCR(image, x, y, w, h))
+        return placas
 
 

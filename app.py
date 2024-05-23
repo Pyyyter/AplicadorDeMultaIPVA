@@ -6,12 +6,17 @@ import cv2
 import os
 from ultralytics import YOLO
 import easyocr
-import csv
+import time
 import numpy as np
+import settings
+import helper
+import csv
 # Função para carregar dados do CSV de teste
 def load_test_csv(file):
     data = pd.read_csv(file)
     return data
+
+
 
 # Função para iterar pelos dados do CSV e adicionar à sessão
 def iterar_pelo_csv(data):
@@ -63,13 +68,31 @@ def filtrar_dados(test_data):
     
     return filtered_data
 
+def reduzir_linhas_consecutivas(file_path):
+    with open(file_path, 'r', newline='') as csv_file:
+        reader = csv.reader(csv_file)
+        lines = list(reader)
 
+    previous_value = None
+    first_line = True
+    reduced_lines = []
+
+    for row in lines:
+        if first_line or row[0] != previous_value:
+            reduced_lines.append(row)
+            previous_value = row[0]
+            first_line = False
+
+    with open(file_path, 'w', newline='') as csv_file:
+        writer = csv.writer(csv_file)
+        writer.writerows(reduced_lines)
+
+csvDB = backend.CsvDB("assets/csv/cars.csv", "assets/csv/owners.csv")
+computerVision = backend.ComputerVision(YOLO("assets/plates.pt"), easyocr.Reader(['en']))
+manager = backend.Manager(csvDB, computerVision)
 # Função principal do Streamlit
 def main():
-    csvDB = backend.CsvDB("assets/csv/cars.csv", "assets/csv/owners.csv")
-    computerVision = backend.ComputerVision(YOLO("assets/plates.pt"), easyocr.Reader(['en']))
-    manager = backend.Manager(csvDB, computerVision)
-
+    source_img = None
     quant_videos = len(os.listdir("assets/videos"))
     arquivo_video = "assets/videos/Video1.mp4"
     test_data = load_test_csv('assets/logs/log.csv')
@@ -77,7 +100,7 @@ def main():
     quant_total_multas = tamanho_csv(test_data)
     tamanho_pagina = 12
 
-    if 'new_entries' not in st.session_state:
+    if 'new_entries' not in st.session_state: 
         st.session_state['new_entries'] = []
 
     if 'pagina_atual' not in st.session_state:
@@ -102,24 +125,36 @@ def main():
         st.selectbox("Desição", ("Todos", "Documento Irregular", "Linceça Cassada"), key="filtro_decisao")
         #st.selectbox("Localizacao", 
         #               ("Todos", "Bairro de Fátima", "Boa Viagem", "Cachoeiras", "Centro", "Charitas", 
-        ##             "Ponta d'Areia", "Santa Rosa", "São Domingos", "São Francisco", "Viradouro",
+        #                "Ponta d'Areia", "Santa Rosa", "São Domingos", "São Francisco", "Viradouro",
             #            "Vital Brazil", "Baldeador", "Barreto", "Caramujo", "Cubango", "Engenhoca",
-            #           "Fonseca", "Ilha da Conceição", "Santa Bárbara", "Santana", "São Lourenço",
-            #          "Tenente Jardim", "Viçoso Jardim", "Cafubá", "Camboinhas", "Engenho do Mato",
-            #         "Itacoatiara", "Itaipu", "Jacaré", "Jardim Imbuí", "Maravista", "Piratininga",
+            #            "Fonseca", "Ilha da Conceição", "Santa Bárbara", "Santana", "São Lourenço",
+            #            "Tenente Jardim", "Viçoso Jardim", "Cafubá", "Camboinhas", "Engenho do Mato",
+            #            "Itacoatiara", "Itaipu", "Jacaré", "Jardim Imbuí", "Maravista", "Piratininga",
                 #        "Santo Antônio", "Serra Grande", "Badu", "Cantagalo", "Ititioca",
-                #       "Largo da Batalha", "Maceió", "Maria Paula", "Matapaca", "Sapê",
-                #      "Vila Progresso", "Muriqui", "Rio do Ouro", "Várzea das Moças"), key="filtro_localizacao")
+                #        "Largo da Batalha", "Maceió", "Maria Paula", "Matapaca", "Sapê",
+                #        "Vila Progresso", "Muriqui", "Rio do Ouro", "Várzea das Moças"), key="filtro_localizacao")
         if st.sidebar.button("Aplicar Filtros"):
             filtered_data = filtrar_dados(test_data)
             iterar_pelo_csv(filtered_data)
+    confidence = float(st.sidebar.slider(
+    "Confiança", 25, 100, 75)) / 100
+    source_radio = st.sidebar.radio(
+    "Selecionar fonte", settings.SOURCES_LIST)
+    if source_radio == settings.IMAGE:
+        source_img = st.sidebar.file_uploader("Escolha a imagem...", type=("jpg", "jpeg", "png", 'bmp', 'webp'))
 
-    confidence = float(st.sidebar.slider("Confiança", 25, 100, 40)) / 100
-    source_img = st.sidebar.file_uploader("Escolha a imagem...", type=("jpg", "jpeg", "png", 'bmp', 'webp'))
+    elif source_radio == settings.VIDEO:
+        helper.play_stored_video(confidence, computerVision.model, manager)
 
+    elif source_radio == settings.WEBCAM:
+        helper.play_webcam(confidence, computerVision.model, manager)
 
+    elif source_radio == settings.RTSP:
+        helper.play_rtsp_stream(confidence, computerVision.model)
+
+    elif source_radio == settings.YOUTUBE:
+        helper.play_youtube_video(confidence, computerVision.model)
     # st.write(st.session_state)
-
     
     colunas_videos = st.columns([9, 1])
 
@@ -138,6 +173,7 @@ def main():
             opencv_image = cv2.imdecode(file_bytes, 1)
             st.image(opencv_image, use_column_width=True)
             manager.run(opencv_image)
+            time.sleep(5)
             iterar_pelo_csv(test_data)
     # Exibir novos dados conforme são processados
     colunas_multas = st.columns(3)
@@ -152,7 +188,6 @@ def main():
         entry = entradas_pagina_atual[index]
         with coluna:
             content_placeholder = st.empty()
-            print("--------", entry)
             
             # Inicializar o estado de toggle para cada card
             if index not in st.session_state['toggle_states']:
