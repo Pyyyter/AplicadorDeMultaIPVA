@@ -3,9 +3,11 @@ import pandas as pd
 import math
 import backend
 import cv2
+import os
 from ultralytics import YOLO
 import easyocr
-
+import csv
+import numpy as np
 # Função para carregar dados do CSV de teste
 def load_test_csv(file):
     data = pd.read_csv(file)
@@ -38,10 +40,12 @@ def get_elementos_pagina_atual(pagina_atual, tamanho_pagina):
 # Função para filtrar dados com base nos inputs do usuário
 def filtrar_dados(test_data):
     filtro_CNH = st.session_state.get("filtro_CNH", "")
-    filtro_pontos = st.session_state.get("filtro_pontos", "")
     filtro_nome = st.session_state.get("filtro_nome", "")
+    filtro_pontos = st.session_state.get("filtro_pontos", "")
+    filtro_licenca = st.session_state.get("filtro_licenca", "")
     filtro_data = st.session_state.get("filtro_data", "")
-    filtro_localizacao = st.session_state.get("filtro_localizacao", "Todos")
+    filtro_decisao = st.session_state.get("filtro decisao", "")
+    #filtro_localizacao = st.session_state.get("filtro_localizacao", "Todos")
 
     filtered_data = test_data
     if filtro_CNH:
@@ -52,13 +56,12 @@ def filtrar_dados(test_data):
         filtered_data = filtered_data[filtered_data['Nome'].astype(str).str.contains(filtro_nome, case=False, na=False)]
     if filtro_data:
         filtered_data = filtered_data[filtered_data['Data/Hora'].astype(str).str.contains(filtro_data, case=False, na=False)]
-    if filtro_localizacao and filtro_localizacao != "Todos":
-        filtered_data = filtered_data[filtered_data['Localização'] == filtro_localizacao]
+    if filtro_decisao and filtro_decisao != "Todos":
+        filtered_data = filtered_data[filtered_data['Decisao'] == filtro_decisao]
+    if filtro_licenca and filtro_licenca != "Todos":
+        filtered_data = filtered_data[filtered_data['Licença Ativa'] == filtro_licenca]
     
     return filtered_data
-
-
-
 
 
 # Função principal do Streamlit
@@ -67,11 +70,11 @@ def main():
     computerVision = backend.ComputerVision(YOLO("assets/plates.pt"), easyocr.Reader(['en']))
     manager = backend.Manager(csvDB, computerVision)
 
-    quant_videos = 6
+    quant_videos = len(os.listdir("assets/videos"))
     arquivo_video = "assets/videos/Video1.mp4"
     test_data = load_test_csv('assets\logs\log.csv')
     #test_data = load_test_csv("teste.csv")
-    quant_total_multas = 48
+    quant_total_multas = tamanho_csv(test_data)
     tamanho_pagina = 12
 
     if 'new_entries' not in st.session_state:
@@ -92,30 +95,30 @@ def main():
 
     with st.sidebar:
         st.text_input("CNH", key="filtro_CNH")
-        st.text_input("Pontos", key="filtro_pontos")
         st.text_input("Nome", key="filtro_nome")
+        st.text_input("Pontos", key="filtro_pontos")
+        st.selectbox("Licença Ativa", ("Todos", "1", "0"), key="filtro_licenca")
         st.text_input("Data", key="filtro_data")
-        st.selectbox("Localizacao", 
-                        ("Todos", "Bairro de Fátima", "Boa Viagem", "Cachoeiras", "Centro", "Charitas", 
-                        "Gragoatá", "Icaraí", "Ingá", "Jurujuba", "Morro do Estado", "Pé Pequeno",
-                        "Ponta d'Areia", "Santa Rosa", "São Domingos", "São Francisco", "Viradouro",
-                        "Vital Brazil", "Baldeador", "Barreto", "Caramujo", "Cubango", "Engenhoca",
-                        "Fonseca", "Ilha da Conceição", "Santa Bárbara", "Santana", "São Lourenço",
-                        "Tenente Jardim", "Viçoso Jardim", "Cafubá", "Camboinhas", "Engenho do Mato",
-                        "Itacoatiara", "Itaipu", "Jacaré", "Jardim Imbuí", "Maravista", "Piratininga",
-                        "Santo Antônio", "Serra Grande", "Badu", "Cantagalo", "Ititioca",
-                        "Largo da Batalha", "Maceió", "Maria Paula", "Matapaca", "Sapê",
-                        "Vila Progresso", "Muriqui", "Rio do Ouro", "Várzea das Moças"), key="filtro_localizacao")
-        
+        st.selectbox("Desição", ("Todos", "Documento Irregular", "Linceça Cassada"), key="filtro_decisao")
+        #st.selectbox("Localizacao", 
+        #               ("Todos", "Bairro de Fátima", "Boa Viagem", "Cachoeiras", "Centro", "Charitas", 
+        ##             "Ponta d'Areia", "Santa Rosa", "São Domingos", "São Francisco", "Viradouro",
+            #            "Vital Brazil", "Baldeador", "Barreto", "Caramujo", "Cubango", "Engenhoca",
+            #           "Fonseca", "Ilha da Conceição", "Santa Bárbara", "Santana", "São Lourenço",
+            #          "Tenente Jardim", "Viçoso Jardim", "Cafubá", "Camboinhas", "Engenho do Mato",
+            #         "Itacoatiara", "Itaipu", "Jacaré", "Jardim Imbuí", "Maravista", "Piratininga",
+                #        "Santo Antônio", "Serra Grande", "Badu", "Cantagalo", "Ititioca",
+                #       "Largo da Batalha", "Maceió", "Maria Paula", "Matapaca", "Sapê",
+                #      "Vila Progresso", "Muriqui", "Rio do Ouro", "Várzea das Moças"), key="filtro_localizacao")
         if st.sidebar.button("Aplicar Filtros"):
             filtered_data = filtrar_dados(test_data)
             iterar_pelo_csv(filtered_data)
 
-        confidence = float(st.sidebar.slider("Confiança", 25, 100, 40)) / 100
-        source_img = st.sidebar.file_uploader("Escolha a imagem...", type=("jpg", "jpeg", "png", 'bmp', 'webp'))
+    confidence = float(st.sidebar.slider("Confiança", 25, 100, 40)) / 100
+    source_img = st.sidebar.file_uploader("Escolha a imagem...", type=("jpg", "jpeg", "png", 'bmp', 'webp'))
 
 
-        # st.write(st.session_state)
+    # st.write(st.session_state)
 
     
     colunas_videos = st.columns([9, 1])
@@ -128,8 +131,14 @@ def main():
                 iterar_pelo_csv(filtered_data)
 
     with colunas_videos[0]:
-        st.video(arquivo_video)
-
+        if source_img is None:
+            st.video(arquivo_video)
+        else:
+            file_bytes = np.asarray(bytearray(source_img.read()))
+            opencv_image = cv2.imdecode(file_bytes, 1)
+            st.image(opencv_image, use_column_width=True)
+            manager.run(opencv_image)
+            iterar_pelo_csv(test_data)
     # Exibir novos dados conforme são processados
     colunas_multas = st.columns(3)
     contador = 0

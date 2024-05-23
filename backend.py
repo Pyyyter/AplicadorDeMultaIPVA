@@ -171,7 +171,6 @@ class Manager():
     def inference(self, plate):
         vehicle = self.db.returnCar(plate)
         owner = self.db.returnOwner(vehicle)
-        wasTicketApplied = False
         decision = "Veículo regular"
         if self.isLicenseRevoked(owner):
             self.applyTicket(owner, "Dirigir com carteira cassada", 880.41, 7)
@@ -199,6 +198,17 @@ class Manager():
 
     def run(self, image):
         for placa in self.computerVision.inference(image):
+            print("!")
+            print("!")
+            print("!")
+            print("!")
+            print("!")
+            print(placa)
+            print("!")
+            print("!")
+            print("!")
+            print("!")
+            print("!")
             owner, decision = self.inference(placa)
             if decision != "Veículo regular":
                 self.logger(image, owner, decision)
